@@ -16,12 +16,16 @@ public class PlayerMovement : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        if (IsServer)
+        {
+            Vector3 start = new Vector3(Random.Range(-3f, 3f), 1, Random.Range(-2f, 2f));
+            GetComponent<NetworkTransform>().Teleport(start, Quaternion.identity, transform.localScale);
+        }
+
         if (!IsOwner) return;
 
         _moveAction = _moveActionReference.action;
         _moveAction.Enable();
-
-        SpawnRequestRpc();
     }
 
     public override void OnNetworkDespawn()
@@ -55,13 +59,6 @@ public class PlayerMovement : NetworkBehaviour
             var target = Quaternion.LookRotation(move);
             transform.rotation = Quaternion.RotateTowards(transform.rotation, target, _turnSpeed * Time.deltaTime);
         }
-    }
-
-    [Rpc(SendTo.Server)]
-    private void SpawnRequestRpc()
-    {
-        Vector3 start = new Vector3(Random.Range(-3f, 3f), 1, Random.Range(-2f, 2f));
-        GetComponent<NetworkTransform>().Teleport(start, Quaternion.identity, transform.localScale);
     }
 
     [Rpc(SendTo.Server)]
