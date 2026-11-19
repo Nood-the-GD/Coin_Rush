@@ -11,7 +11,8 @@ public class PlayerMovement : NetworkBehaviour
 
     [SerializeField] private InputActionReference _moveActionReference;
     private InputAction _moveAction;
-    private Vector2 _input;
+    private Vector2 _serverInput;
+    private Vector2 _lastSendInput;
 
     public override void OnNetworkSpawn()
     {
@@ -20,31 +21,52 @@ public class PlayerMovement : NetworkBehaviour
         _moveAction = _moveActionReference.action;
         _moveAction.Enable();
 
-        Vector3 start = new Vector3(Random.Range(-3f, 3f), 1, Random.Range(-2f, 2f));
-        GetComponent<NetworkTransform>().Teleport(start, Quaternion.identity, transform.localScale);
+        SpawnRequestRpc();
     }
 
     public override void OnNetworkDespawn()
     {
-        if(!IsOwner) _moveAction.Disable();
+        if (IsOwner) _moveAction.Disable();
     }
 
     void Update()
     {
-        if (!IsOwner || !IsSpawned) return;
+        if (IsOwner && IsSpawned)
+        {
+            var temp = Vector2.ClampMagnitude(_moveAction.ReadValue<Vector2>(), 1f);
+            if (_lastSendInput != temp)
+            {
+                _lastSendInput = temp;
+                MoveRpc(temp);
+            }
+        }
 
-        _input = Vector2.ClampMagnitude(_moveAction.ReadValue<Vector2>(), 1f);
-        Vector3 move = new Vector3(_input.x, 0f, _input.y);
 
+        if (!IsServer) return;
+
+        Vector3 move = new Vector3(_serverInput.x, 0f, _serverInput.y);
         Vector3 p = transform.position + move * _speed * Time.deltaTime;
         p.x = Mathf.Clamp(p.x, -_arenaHalfSize.x, _arenaHalfSize.x);
         p.z = Mathf.Clamp(p.z, -_arenaHalfSize.y, _arenaHalfSize.y);
         transform.position = p;
 
-        if(move.sqrMagnitude > 0.01f)
+        if (move.sqrMagnitude > 0.01f)
         {
             var target = Quaternion.LookRotation(move);
             transform.rotation = Quaternion.RotateTowards(transform.rotation, target, _turnSpeed * Time.deltaTime);
         }
+    }
+
+    [Rpc(SendTo.Server)]
+    private void SpawnRequestRpc()
+    {
+        Vector3 start = new Vector3(Random.Range(-3f, 3f), 1, Random.Range(-2f, 2f));
+        GetComponent<NetworkTransform>().Teleport(start, Quaternion.identity, transform.localScale);
+    }
+
+    [Rpc(SendTo.Server)]
+    private void MoveRpc(Vector2 dir)
+    {
+        _serverInput = dir;
     }
 }
