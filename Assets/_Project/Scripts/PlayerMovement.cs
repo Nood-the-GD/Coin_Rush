@@ -26,7 +26,7 @@ public class PlayerMovement : NetworkBehaviour
 
     public override void OnNetworkDespawn()
     {
-        if(!IsOwner) _moveAction.Disable();
+        if (IsOwner) _moveAction?.Disable();
     }
 
     void Update()
