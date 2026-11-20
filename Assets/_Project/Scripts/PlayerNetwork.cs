@@ -4,25 +4,31 @@ using System;
 using System.Collections.Generic;
 using Unity.Collections;
 using TMPro;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using UnityEngine.InputSystem;
 
 
 public class PlayerNetwork : NetworkBehaviour
 {
+    public static event Action<PlayerNetwork> OnPlayerEnterGame;
+    public static event Action<PlayerNetwork> OnPlayerExitGame;
+    public static event Action<PlayerNetwork, string> OnPlayerNameChange;
+    public static event Action<PlayerNetwork, int> OnPlayerScoreChange;
     public static readonly List<PlayerNetwork> All = new();
 
     public NetworkVariable<FixedString64Bytes> PlayerName = new();
     public NetworkVariable<int> ColorIndex = new();
     public NetworkVariable<int> Score = new();
 
+    [SerializeField] private AudioClip _coinSound;
     [SerializeField] private Renderer _body;
     [SerializeField] private TMP_Text _nameLabel;
     [SerializeField] private Color[] _palette = { Color.red, Color.cyan, Color.yellow, Color.magenta };
 
     public override void OnNetworkSpawn()
     {
+        OnPlayerEnterGame?.Invoke(this);
+
         All.Add(this);
         PlayerName.OnValueChanged += OnNameChanged;
         ColorIndex.OnValueChanged += OnColorIndexChanged;
@@ -39,6 +45,7 @@ public class PlayerNetwork : NetworkBehaviour
     private void OnScoreChanged(int previousValue, int newValue)
     {
         _nameLabel.text = $"{PlayerName.Value.ToString()} ({newValue})";
+        OnPlayerScoreChange?.Invoke(this, newValue);
     }
 
     private void OnColorIndexChanged(int previousValue, int newValue)
@@ -49,11 +56,14 @@ public class PlayerNetwork : NetworkBehaviour
 
     private void OnNameChanged(FixedString64Bytes previousValue, FixedString64Bytes newValue)
     {
-        _nameLabel.text = $"{newValue} ({Score.Value})";
+        string name = $"{newValue} ({Score.Value})";
+        _nameLabel.text = name;
+        OnPlayerNameChange?.Invoke(this, newValue.ToString());
     }
 
     public override void OnNetworkDespawn()
     {
+        OnPlayerExitGame?.Invoke(this);
         All.Remove(this);
         PlayerName.OnValueChanged -= OnNameChanged;
         Score.OnValueChanged -= OnScoreChanged;
@@ -80,19 +90,18 @@ public class PlayerNetwork : NetworkBehaviour
                 RequestChangeColorRpc();
             }
         }
-
-        if (!IsServer) return;
-
-        if (Keyboard.current.pKey.wasPressedThisFrame)
-        {
-            Score.Value++;
-        }
     }
 
     [Rpc(SendTo.Server)]
     private void RequestChangeColorRpc()
     {
         ColorIndex.Value = FindFreeColor(ColorIndex.Value + 1);
+    }
+
+    [Rpc(SendTo.Owner)]
+    public void PlayCoinSoundRpc()
+    {
+        AudioSource.PlayClipAtPoint(_coinSound, this.transform.position);
     }
 
     private int FindFreeColor(int start)
