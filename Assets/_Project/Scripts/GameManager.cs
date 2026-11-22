@@ -1,3 +1,4 @@
+using System;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -19,6 +20,31 @@ public class GameManager : NetworkBehaviour
     void Awake()
     {
         Instance = this;
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        NetworkManager.Singleton.ConnectionApprovalCallback += OnConnectionApproval;
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        NetworkManager.Singleton.ConnectionApprovalCallback -= OnConnectionApproval;
+    }
+
+    private void OnConnectionApproval(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
+    {
+        if (State.Value == GameState.Playing)
+        {
+            response.Approved = false;
+            response.Reason = "Room Playing";
+        }
+        else
+        {
+            response.Approved = true;
+            response.CreatePlayerObject = true;
+        }
+
     }
 
     public float TimeLeft()
