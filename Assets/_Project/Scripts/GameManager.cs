@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Threading.Tasks;
 using Unity.Netcode;
 using Unity.Services.Multiplayer;
 using UnityEngine;
@@ -21,6 +23,11 @@ public class GameManager : NetworkBehaviour
     void Awake()
     {
         Instance = this;
+    }
+
+    IEnumerator Start()
+    {
+        yield return new WaitUntil(() => NetworkManager.Singleton != null);
         NetworkManager.Singleton.ConnectionApprovalCallback = OnConnectionApproval;
     }
 
