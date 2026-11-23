@@ -1,5 +1,6 @@
 using System;
 using Unity.Netcode;
+using Unity.Services.Multiplayer;
 using UnityEngine;
 
 public enum GameState { Lobby, CountDown, Playing, Ended }
@@ -20,16 +21,7 @@ public class GameManager : NetworkBehaviour
     void Awake()
     {
         Instance = this;
-    }
-
-    public override void OnNetworkSpawn()
-    {
-        NetworkManager.Singleton.ConnectionApprovalCallback += OnConnectionApproval;
-    }
-
-    public override void OnNetworkDespawn()
-    {
-        NetworkManager.Singleton.ConnectionApprovalCallback -= OnConnectionApproval;
+        NetworkManager.Singleton.ConnectionApprovalCallback = OnConnectionApproval;
     }
 
     private void OnConnectionApproval(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)

@@ -9,6 +9,7 @@ public class MenuUI : MonoBehaviour
 {
     [Header("Pre Game")]
     [SerializeField] private RelayConnector _relay;
+    [SerializeField] private SessionManager _sessionManager;
     [SerializeField] private GameObject _menuPanel;
     [SerializeField] private TMP_InputField _nameInput, _codeInput;
     [SerializeField] private Button _hostButton, _joinButton;
@@ -22,7 +23,7 @@ public class MenuUI : MonoBehaviour
         NetworkManager.Singleton.OnClientStopped += (b) =>
         {
             var reason = NetworkManager.Singleton.DisconnectReason;
-            ShowMenu(string.IsNullOrEmpty(reason) ? reason : "Disconnected");
+            ShowMenu(!string.IsNullOrEmpty(reason) ? reason : "Disconnected");
         };
     }
 
@@ -32,8 +33,10 @@ public class MenuUI : MonoBehaviour
         SetBusy(true, "Creating room...");
         try
         {
-            string code = await _relay.HostAsync(4);
-            if(code == null)
+            // string code = await _relay.HostAsync(4);
+            await _sessionManager.CreateSession();
+            string code = _sessionManager.ActiveSession.Code;
+            if (code == null)
             {
                 ShowMenu("Can't create room");
                 return;
@@ -54,8 +57,9 @@ public class MenuUI : MonoBehaviour
 
         try
         {
-            bool ok = await _relay.JoinAsync(_codeInput.text);
-            if(!ok )
+            // bool ok = await _relay.JoinAsync(_codeInput.text);
+            bool ok = await _sessionManager.JoinByCode(_codeInput.text);
+            if (!ok)
             {
                 ShowMenu("Can't join");
                 return;
